@@ -76,9 +76,17 @@ memdump(char *fmt, char *data)
 
     //If FMT is p
     if (fmt[i] == 'p'){
-      long val = *(long *)p;
-      printf("%ld\n", val);
-      p += 8;
+      int lo = *(int *)p;
+      p += 4;
+      int hi = *(int *)p;
+       
+      // Dont print High Byte is it is Empty
+      if (hi == 0){
+        printf("%x\n", lo);
+      } else {
+        printf("%x%x\n", hi, lo);
+      }
+      p += 4;
     }
 
     //If FMT is h

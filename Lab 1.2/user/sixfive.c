@@ -6,7 +6,6 @@ int
 main(int argc, char *argv[])
 {
     int fd;
-    //int n;
     char c;
     char str[128];
     int charCount = 0;

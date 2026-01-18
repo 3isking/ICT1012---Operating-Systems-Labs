@@ -42,9 +42,16 @@ def test_xargs():
     matches = re.findall("hello", r.qemu.output)
     assert_equal(len(matches), 3, "Number of appearances of 'hello'")
 
+
 @test(10, "xargs, multi-line echo")
-def test_xargs_multiline():
+def test_xargs_multiline1():
     r.run_qemu(shell_script(['(echo 1 ; echo 2) | xargs echo']))
-    r.match('^1$', '^2$')
+    r.match('^1 2$')
     
+
+@test(10, "xargs, multi-line  -n 1 echo")
+def test_xargs_multiline2():
+    r.run_qemu(shell_script(['(echo 1 ; echo 2) | xargs -n 1 echo']))
+    r.match('^1$', '^2$')
+
 run_tests()

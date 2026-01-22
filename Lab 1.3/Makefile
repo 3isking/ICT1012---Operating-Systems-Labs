@@ -196,6 +196,8 @@ UPROGS=\
 	$U/_forphan\
 	$U/_dorphan\
 	$U/_handshake\
+	$U/_secret\
+	$U/_sniffer\
 
 ifeq ($(LAB),thread)
 UPROGS += \

@@ -1,38 +1,51 @@
 
-user/_ln:     file format elf64-littleriscv
+user/_secret:     file format elf64-littleriscv
 
 
 Disassembly of section .text:
 
 0000000000000000 <main>:
+
+char data[DATASIZE];
+
+int
+main(int argc, char *argv[])
+{
    0:	1101                	addi	sp,sp,-32
    2:	ec06                	sd	ra,24(sp)
    4:	e822                	sd	s0,16(sp)
    6:	1000                	addi	s0,sp,32
-   8:	478d                	li	a5,3
-   a:	00f50d63          	beq	a0,a5,24 <main+0x24>
+  if(argc != 2){
+   8:	4789                	li	a5,2
+   a:	00f50c63          	beq	a0,a5,22 <main+0x22>
    e:	e426                	sd	s1,8(sp)
-  10:	00001597          	auipc	a1,0x1
-  14:	8c058593          	addi	a1,a1,-1856 # 8d0 <malloc+0x104>
-  18:	4509                	li	a0,2
-  1a:	6d4000ef          	jal	6ee <fprintf>
-  1e:	4505                	li	a0,1
-  20:	2c4000ef          	jal	2e4 <exit>
-  24:	e426                	sd	s1,8(sp)
-  26:	84ae                	mv	s1,a1
-  28:	698c                	ld	a1,16(a1)
-  2a:	6488                	ld	a0,8(s1)
-  2c:	318000ef          	jal	344 <link>
-  30:	00054563          	bltz	a0,3a <main+0x3a>
-  34:	4501                	li	a0,0
-  36:	2ae000ef          	jal	2e4 <exit>
-  3a:	6894                	ld	a3,16(s1)
-  3c:	6490                	ld	a2,8(s1)
-  3e:	00001597          	auipc	a1,0x1
-  42:	8aa58593          	addi	a1,a1,-1878 # 8e8 <malloc+0x11c>
-  46:	4509                	li	a0,2
-  48:	6a6000ef          	jal	6ee <fprintf>
-  4c:	b7e5                	j	34 <main+0x34>
+    printf("Usage: secret the-secret\n");
+  10:	00001517          	auipc	a0,0x1
+  14:	8c050513          	addi	a0,a0,-1856 # 8d0 <malloc+0x104>
+  18:	700000ef          	jal	718 <printf>
+    exit(1);
+  1c:	4505                	li	a0,1
+  1e:	2c6000ef          	jal	2e4 <exit>
+  22:	e426                	sd	s1,8(sp)
+  24:	84ae                	mv	s1,a1
+  }
+
+  strcpy(data, "This may help.");
+  26:	00001597          	auipc	a1,0x1
+  2a:	8ca58593          	addi	a1,a1,-1846 # 8f0 <malloc+0x124>
+  2e:	00001517          	auipc	a0,0x1
+  32:	fe250513          	addi	a0,a0,-30 # 1010 <data>
+  36:	02a000ef          	jal	60 <strcpy>
+
+  strcpy(data + 16, argv[1]);
+  3a:	648c                	ld	a1,8(s1)
+  3c:	00001517          	auipc	a0,0x1
+  40:	fe450513          	addi	a0,a0,-28 # 1020 <data+0x10>
+  44:	01c000ef          	jal	60 <strcpy>
+
+  exit(0);
+  48:	4501                	li	a0,0
+  4a:	29a000ef          	jal	2e4 <exit>
 
 000000000000004e <start>:
   4e:	1141                	addi	sp,sp,-16
@@ -869,8 +882,8 @@ Disassembly of section .text:
  826:	e852                	sd	s4,16(sp)
  828:	e456                	sd	s5,8(sp)
  82a:	e05a                	sd	s6,0(sp)
- 82c:	00000797          	auipc	a5,0x0
- 830:	7e478793          	addi	a5,a5,2020 # 1010 <base>
+ 82c:	00008797          	auipc	a5,0x8
+ 830:	7e478793          	addi	a5,a5,2020 # 9010 <base>
  834:	00000717          	auipc	a4,0x0
  838:	7cf73623          	sd	a5,1996(a4) # 1000 <freep>
  83c:	e39c                	sd	a5,0(a5)

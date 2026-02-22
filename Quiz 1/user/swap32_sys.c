@@ -40,8 +40,6 @@ int main(int argc, char *argv[])
     }
 
     // Parse hexadecimal (base 16)
-    val = val & 0xFFFFFFFF;
-    printf("Input:  0x%x\n", val);
     endianswap(val);
     exit(0);
 }

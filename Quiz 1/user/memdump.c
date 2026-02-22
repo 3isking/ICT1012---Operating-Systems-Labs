@@ -129,7 +129,7 @@ memdump(char *fmt, char *data)
       // Loop over 16 hex characters (8 bytes)
       for (int j = 0; j < 16; j += 2){
         int hi = hexval(p[j]); // high nibble of the byte
-        int lo = hexval(p[j+1]); // fill the missing code
+        int lo = hexval(p[j+1]); //   fill the missing code
         
         if (hi < 0 || lo < 0)
           continue; // skip invalid hex chars
@@ -138,7 +138,7 @@ memdump(char *fmt, char *data)
         char v = hi*16 + lo; // fill the missing code
 
         // printable only
-        if(v >= 0 && v <= 127) // fill the missing values. Refer to the ASCII Table.
+        if(v >= 32 && v <= 126) // fill the missing values. Refer to the ASCII Table.
           printf("%c", v); // print printable ASCII
       }
 

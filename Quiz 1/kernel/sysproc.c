@@ -110,16 +110,24 @@ uint64
 sys_endianswap(void)
 {  
   
-  int val;
-  argint(0, &val);
+  uint val;
+  argint(0, (int *)&val);
+  printf("Input:  0x%X\n", val);
   val = val & 0xFFFFFFFF;
 
   // 8-bit (byte) swap of 32-bit value
-  uint high1 = (val & 0xFF000000) >> 24;
-  uint low1 = (val & 0x00FF0000) >> 16;
-  uint high2 = (val & 0x0000FF00) >> 8;
-  uint low2 = (val & 0x000000FF);
-  uint swapped = (low2 << 24) | (high2 << 16) | (low1 << 8) | high1;
-  printf("Output: 0x%x\n", swapped);
+  // uint high1 = (val & 0xFF000000) >> 24;
+  // uint low1 = (val & 0x00FF0000) >> 16;
+  // uint high2 = (val & 0x0000FF00) >> 8;
+  // uint low2 = (val & 0x000000FF);
+  // uint swapped = (low2 << 24) | (high2 << 16) | (low1 << 8) | high1;
+
+  uint swapped = 
+        ((val & 0x000000FF) << 24) | 
+        ((val & 0x0000FF00) << 8) | 
+        ((val & 0x00FF0000) >> 8) | 
+        ((val & 0xFF000000) >> 24);
+
+  printf("Output: 0x%X\n", swapped);
   return val;
 }

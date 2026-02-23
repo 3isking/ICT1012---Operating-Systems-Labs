@@ -27,6 +27,7 @@ int htoi_safe(char *s, uint *res) {
 int main(int argc, char *argv[])
 {
     uint val;
+    uint swapped;
 
     if (argc != 2) {
         fprintf(2, "usage: swap32 <32-bit hex value>\n");
@@ -40,6 +41,9 @@ int main(int argc, char *argv[])
     }
 
     // Parse hexadecimal (base 16)
-    endianswap(val);
+    
+    printf("Input:  0x%x\n", val);
+    swapped = endianswap(val);
+    printf("Output: 0x%x\n", swapped);
     exit(0);
 }

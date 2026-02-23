@@ -112,7 +112,6 @@ sys_endianswap(void)
   
   uint val;
   argint(0, (int *)&val);
-  printf("Input:  0x%X\n", val);
   val = val & 0xFFFFFFFF;
 
   // 8-bit (byte) swap of 32-bit value
@@ -128,6 +127,6 @@ sys_endianswap(void)
         ((val & 0x00FF0000) >> 8) | 
         ((val & 0xFF000000) >> 24);
 
-  printf("Output: 0x%X\n", swapped);
-  return val;
+  
+  return swapped;
 }

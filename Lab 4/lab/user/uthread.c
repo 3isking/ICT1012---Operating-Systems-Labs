@@ -6,6 +6,7 @@
 #define FREE        0x0
 #define RUNNING     0x1
 #define RUNNABLE    0x2
+//#define WAITING    0x3
 
 #define STACK_SIZE  8192
 #define MAX_THREAD  4
@@ -31,6 +32,7 @@ struct thread {
   char       stack[STACK_SIZE]; /* the thread's stack */
   int        state;             /* FREE, RUNNING, RUNNABLE */
   struct     thread_context context;
+  struct     thread *parent;
 };
 struct thread all_thread[MAX_THREAD];
 struct thread *current_thread;
@@ -96,6 +98,7 @@ thread_create(void (*func)())
   // YOUR CODE HERE
   t->context.sp = (uint64)(t->stack + STACK_SIZE);
   t->context.ra = (uint64)func;
+  //t->parent = current_thread;
 }
 
 void 
@@ -124,6 +127,8 @@ thread_a(void)
   }
   printf("thread_a: exit after %d\n", a_n);
 
+  // thread_exit();
+
   current_thread->state = FREE;
   thread_schedule();
 }
@@ -143,6 +148,8 @@ thread_b(void)
     thread_yield();
   }
   printf("thread_b: exit after %d\n", b_n);
+  
+  // thread_exit();
 
   current_thread->state = FREE;
   thread_schedule();
@@ -163,6 +170,8 @@ thread_c(void)
     thread_yield();
   }
   printf("thread_c: exit after %d\n", c_n);
+  
+  // thread_exit();
 
   current_thread->state = FREE;
   thread_schedule();
@@ -181,3 +190,22 @@ main(int argc, char *argv[])
   thread_schedule();
   exit(0);
 }
+
+// // Thread Free
+// void thread_exit(void)
+// {
+//     // if(current_thread->parent != 0){
+//     //     current_thread->parent->state = RUNNABLE;
+//     // }
+//     current_thread->state = FREE;
+//     thread_schedule();
+// }
+
+// // Thread Join
+// void thread_join(struct thread *t)
+// {
+//     if(t->state != FREE){
+//         current_thread->state = WAITING;
+//         thread_schedule();
+//     }
+// }

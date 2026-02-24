@@ -16,6 +16,7 @@ struct entry {
 struct entry *table[NBUCKET];
 int keys[NKEYS];
 int nthread = 1;
+// Create a list of Bucket Locks. One for each bucket.
 pthread_mutex_t bucket_locks[NBUCKET];
 
 double
@@ -39,9 +40,13 @@ insert(int key, int value, struct entry **p, struct entry *n)
 static 
 void put(int key, int value)
 {
+  // Identify which bucket the key belongs to
   int i = key % NBUCKET;
 
+  // This is similar to acquire(). It will lock the identified bucket or pu the thread to sleep.
   pthread_mutex_lock(&bucket_locks[i]);
+
+  // Once the bucket is locked, then execute the function
 
   // is the key already present?
   struct entry *e = 0;
@@ -50,12 +55,14 @@ void put(int key, int value)
       break;
   }
 
+  // Critical Section
   if (e) {
     e->value = value;
   } else {
     insert(key, value, &table[i], table[i]);
   }
 
+  // Unlock once done
   pthread_mutex_unlock(&bucket_locks[i]);
 
 }
@@ -113,9 +120,12 @@ main(int argc, char *argv[])
     fprintf(stderr, "Usage: %s nthreads\n", argv[0]);
     exit(-1);
   }
+
+  // Initialize Bucket Keys
   for (int i = 0; i < NBUCKET; i++) {
     pthread_mutex_init(&bucket_locks[i], NULL);
   }
+
   nthread = atoi(argv[1]);
   tha = malloc(sizeof(pthread_t) * nthread);
   srandom(0);
@@ -154,6 +164,7 @@ main(int argc, char *argv[])
   printf("%d gets, %.3f seconds, %.0f gets/second\n",
          NKEYS*nthread, t1 - t0, (NKEYS*nthread) / (t1 - t0));
 
+  // Dispose Locks once Complete
   for (int i = 0; i < NBUCKET; i++) {
     pthread_mutex_destroy(&bucket_locks[i]);
   }

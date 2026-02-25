@@ -1,0 +1,17 @@
+
+xv6 kernel is booting
+
+hart 2 starting
+hart 1 starting
+init: starting sh
+$ uthread_ex3
+thread_a started
+thread_b started
+thread_c started
+thread_a: exit after 3
+only thread sleepings, wake them all
+thread_b: exit after 3
+only thread sleepings, wake them all
+thread_c: exit after 3
+thread_schedule: no runnable threads
+$ qemu-system-riscv64: terminating on signal 15 from pid 2025 (make)

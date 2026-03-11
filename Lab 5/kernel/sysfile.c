@@ -328,6 +328,52 @@ sys_open(void)
       return -1;
     }
     ilock(ip);
+
+    /*
+    ---------------- IMPLEMENTATION OF SYMBOLIC LINKS ----------------
+    */
+
+
+    // Depth Counter to Keep Track of How Many Symbolic Links Passed
+    int depth = 0;
+    char linkpath[MAXPATH];
+
+    // Check if the Inode is a SYMLINK and there is no NOFOLLOW flag set
+    while (ip->type == T_SYMLINK && !(omode & O_NOFOLLOW)) {
+      // If 10 redirects are created, Transaction is dropped
+      if (depth >= 10) {
+        iunlockput(ip);
+        end_op();
+        return -1;  // too many levels of symlinks
+      }
+
+      // Read the target path stored in the symlink's data
+      int n = readi(ip, 0, (uint64)linkpath, 0, MAXPATH);
+      if (n <= 0) {
+        iunlockput(ip);
+        end_op();
+        return -1;
+      }
+      linkpath[n] = '\0';
+
+      // Release the current SYSLINK Inode to later replace with the real inode
+      iunlockput(ip);  
+
+      // FInd the Real File's Inode w/ File Path
+      ip = namei(linkpath);
+
+      // If the Real File Cannot be found, it is a Dangling Link
+      // Return -1
+      if (ip == 0) {
+        end_op();
+        return -1;
+      }
+
+      // Lock the new Inode & increment the depth
+      ilock(ip);
+      depth++;
+    }
+
     if(ip->type == T_DIR && omode != O_RDONLY){
       iunlockput(ip);
       end_op();
@@ -501,5 +547,44 @@ sys_pipe(void)
     fileclose(wf);
     return -1;
   }
+  return 0;
+}
+
+uint64
+sys_symlink(void)
+{
+  char target[MAXPATH], path[MAXPATH];
+  struct inode *ip;
+
+  // ArgStr used to get Syscall Arugments
+  // One is for the Target variable and the other is for Path
+  // If either one is empty, return -1
+  if(argstr(0, target, MAXPATH) < 0 || argstr(1, path, MAXPATH) < 0)
+    return -1;
+
+  // Begin a Transaction (necessary to do a write to prevent crashes)
+  begin_op();
+
+  // Create an Symlink Inode
+  // The Inode is locked on creation
+  // If it does not create successfully, end the Transaction and return -1
+  if((ip = create(path, T_SYMLINK, 0, 0)) == 0){
+    end_op();
+    return -1;
+  }
+
+  // Write the target path onto the Symlink Inode
+  // When Symlink Inode is opened, the contained path is referenced
+  // If the write is unsuccessful, end the Transaction and return -1
+  if(writei(ip, 0, (uint64)target, 0, strlen(target)) < 0){
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+
+  // Unlock the Inode & End the Transaction
+  iunlockput(ip);
+  end_op();
+
   return 0;
 }

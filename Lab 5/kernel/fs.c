@@ -417,6 +417,77 @@ bmap(struct inode *ip, uint bn)
     return addr;
   }
 
+  /*
+    ---------------- IMPLEMENTATION FOR DOUBLE INDIRECT BLOCKS ------------------
+  */
+
+  // Adjust Block Number to put into the Double Indirect Range
+  bn -= NINDIRECT;
+
+  // If the Block Number is in the range of a Double Indirect Range,
+  // Then complete the Double Indirect Range Logic 
+  if(bn < NDINDIRECT){
+
+    // Load the double indirect block (NDIRECT is 11 and the Double Indirect is in index 12)
+    // Check if Index 12 In the Inode Contains the Address of the Block.
+    // IF the address of the block is missing, then use balloc to allocate (similar to Indirect Block)
+    if((addr = ip->addrs[NDIRECT + 1]) == 0){
+      addr = balloc(ip->dev);
+      // Return 0 if out of disk space
+      if(addr == 0)
+        return 0;
+      ip->addrs[NDIRECT + 1] = addr;
+    }
+
+    // Take the Double Indirect Address Block and Block Read it
+    // Block Read will reference the Address of the Double Indirect Block (Master Map)
+    // Using bp as a buffer, array a should contain 256 pointers to indirect blocks
+    bp = bread(ip->dev, addr);
+    a = (uint*)bp->data;
+
+    // To find data within a DINDIRECT, there must be a reference to which In Indiract block and which block indide said Indirect
+    // First refers to which Indirect Block to use
+    // Second refers to which block inside the Indirect to use
+    uint first = bn / NINDIRECT; // Eg. bn = 500. 500 / 256 = 1. Use index 1 Indirect Block
+    uint second = bn % NINDIRECT; // Eg. bn = 500. 500 % 256 = 244. Use index 244 Block
+
+    // Check if the found Indirect Block is empty
+    // If empty, use balloc to allocate a block and store it to array a
+    // During this check, addr is no longer set to point to the Master Map Book
+    // Addr will now point to the found Indirect Block
+    if((addr = a[first]) == 0){
+      addr = balloc(ip->dev);
+      if(addr){
+        a[first] = addr;
+        log_write(bp);
+      }
+    }
+
+    // Close the Double Indirect Block (Master Map)
+    brelse(bp);
+
+    // Open the Found Indirect BLock, addr should already point to it
+    bp = bread(ip->dev, addr);
+    a = (uint*)bp->data;
+
+    // Check if found Data block in indirect block is empty
+    // addr will point to the data inside the Data block
+    // If the data block is empty, then allocate the data block
+    if((addr = a[second]) == 0){
+      addr = balloc(ip->dev);
+      if(addr){
+        a[second] = addr;
+        log_write(bp);
+      }
+    }
+
+    // Close the Indirect Block
+    brelse(bp);
+
+    // Return the address of the found data block
+    return addr;
+  }
+
   panic("bmap: out of range");
 }
 
@@ -446,6 +517,47 @@ itrunc(struct inode *ip)
     brelse(bp);
     bfree(ip->dev, ip->addrs[NDIRECT]);
     ip->addrs[NDIRECT] = 0;
+  }
+
+  /*
+    ---------------- IMPLEMENTATION FOR DOUBLE INDIRECT BLOCKS ------------------
+  */
+
+  // NDIRECT is 11 and the Double Indirect is in index 12
+  // Check if Index 12 In the Inode Contains the Address of the Block.
+  // If it does, complete the clearing logic
+  if(ip->addrs[NDIRECT + 1]){
+    // Read the Double Indirect Block (Master Map)
+    bp = bread(ip->dev, ip->addrs[NDIRECT + 1]);
+    a = (uint*)bp->data;
+
+    // Loop through every single Indirect Block inside the Master Map
+    for(int i = 0; i < NINDIRECT; i++){
+      // Apply Cleaning logic if Indirect Block is found
+      if(a[i]){
+        // Read the Indirect Block (Secondary Map)
+        struct buf *bp2 = bread(ip->dev, a[i]);
+        uint *a2 = (uint*)bp2->data;
+
+        // Loop through the Indirect Block 
+        for(int j = 0; j < NINDIRECT; j++){
+          // Apply Cleaning logic if Direct Data Block is found
+          if(a2[j])
+            bfree(ip->dev, a2[j]);
+        }
+
+        // Once all data blocks are bfree(), release the Indirect Block and call bfree()
+        brelse(bp2);
+        bfree(ip->dev, a[i]);
+      }
+    }
+
+    // Once all indirect blocks are bfree(), release the Double Indirect Block and call bfree()
+    brelse(bp);
+    bfree(ip->dev, ip->addrs[NDIRECT + 1]);
+
+    // Clear the inode by setting the index of the array to 0
+    ip->addrs[NDIRECT + 1] = 0;
   }
 
   ip->size = 0;

@@ -491,6 +491,12 @@ bmap(struct inode *ip, uint bn)
   panic("bmap: out of range");
 }
 
+// For Triple Indirect
+// To Find Indexes
+// First Layer: bn / 256^2
+// Second Layer: (bn / 256) % 256;
+// Third Layer: bn % N;
+
 // Truncate inode (discard contents).
 // Caller must hold ip->lock.
 void

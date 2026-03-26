@@ -588,3 +588,157 @@ sys_symlink(void)
 
   return 0;
 }
+
+// TRIPLE INDIRECT
+// bn -= NDINDIRECT;   // subtract doubly-indirect range first
+
+// if(bn < NTINDIRECT){
+
+//     // ── LEVEL 1: get or allocate the L1 master map ──────────────────
+//     // ip->addrs[NDIRECT+2] is the triply-indirect slot in the inode
+//     if((addr = ip->addrs[NDIRECT+2]) == 0){
+//         addr = balloc(ip->dev);
+//         if(addr == 0)
+//             return 0;
+//         ip->addrs[NDIRECT+2] = addr;
+//     }
+
+//     // load L1 map into memory
+//     bp = bread(ip->dev, addr);
+//     a = (uint*)bp->data;
+
+//     // calculate which L2 map we need
+//     uint idx1 = bn / (NINDIRECT * NINDIRECT);
+
+//     // get or allocate the L2 map
+//     if((addr = a[idx1]) == 0){
+//         addr = balloc(ip->dev);
+//         if(addr){
+//             a[idx1] = addr;
+//             log_write(bp);      // L1 map was modified
+//         }
+//     }
+//     brelse(bp);                 // done with L1 — release immediately
+//     if(addr == 0)
+//         return 0;
+
+//     // ── LEVEL 2: get or allocate the L2 map ─────────────────────────
+//     bp = bread(ip->dev, addr);
+//     a = (uint*)bp->data;
+
+//     // calculate which L3 map we need
+//     uint idx2 = (bn / NINDIRECT) % NINDIRECT;
+
+//     // get or allocate the L3 map
+//     if((addr = a[idx2]) == 0){
+//         addr = balloc(ip->dev);
+//         if(addr){
+//             a[idx2] = addr;
+//             log_write(bp);      // L2 map was modified
+//         }
+//     }
+//     brelse(bp);                 // done with L2 — release immediately
+//     if(addr == 0)
+//         return 0;
+
+//     // ── LEVEL 3: get or allocate the L3 map ─────────────────────────
+//     bp = bread(ip->dev, addr);
+//     a = (uint*)bp->data;
+
+//     // calculate which data block we need
+//     uint idx3 = bn % NINDIRECT;
+
+//     // get or allocate the actual data block
+//     if((addr = a[idx3]) == 0){
+//         addr = balloc(ip->dev);
+//         if(addr){
+//             a[idx3] = addr;
+//             log_write(bp);      // L3 map was modified
+//         }
+//     }
+//     brelse(bp);                 // done with L3 — release immediately
+//     return addr;
+// }
+// ---
+
+// ## The pattern you can apply to any number of levels
+
+// Every level follows exactly the same four steps:
+
+// 1. check if addr slot is 0 → balloc if so → save it back → log_write if it was a map block
+// 2. bread that addr to load the map
+// 3. calculate the index for THIS level
+// 4. brelse the map immediately after getting the next addr
+// The only things that change between levels are which slot you save the address into, and the index formula. Here is how the index formula scales:
+
+// singly:   index = bn
+// doubly:   idx1  = bn / 256
+//           idx2  = bn % 256
+// triply:   idx1  = bn / (256 × 256)
+//           idx2  = (bn / 256) % 256
+//           idx3  = bn % 256
+
+
+/*
+sys_link(void)
+{
+  char old[MAXPATH], new[MAXPATH];
+  char name[DIRSIZ];
+  struct inode *ip, *dp;
+
+  // Fetch arguments: link(old, new)
+  if(argstr(0, old, MAXPATH) < 0 || argstr(1, new, MAXPATH) < 0)
+    return -1;
+
+  begin_op();  // start filesystem operation
+
+  // Get inode of existing file (old)
+  if((ip = namei(old)) == 0){
+    end_op();
+    return -1;
+  }
+
+  ilock(ip);
+
+  // Disallow linking directories (prevents cycles)
+  if(ip->type == T_DIR){
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+
+  // Increment link count (another name pointing to same inode)
+  ip->nlink++;
+  iupdate(ip);   // write updated inode to disk
+  iunlock(ip);
+
+  // Find parent directory of new path
+  if((dp = nameiparent(new, name)) == 0)
+    goto bad;
+
+  ilock(dp);
+
+  // Create new directory entry: name → ip->inum
+  if(dirlink(dp, name, ip->inum) < 0){
+    iunlockput(dp);
+    goto bad;
+  }
+
+  iunlockput(dp);
+  iput(ip);
+
+  end_op();
+  return 0;
+
+bad:
+  // Rollback if linking failed
+  ilock(ip);
+  ip->nlink--;
+  iupdate(ip);
+  iunlockput(ip);
+
+  end_op();
+  return -1;
+}
+
+*/

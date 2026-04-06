@@ -152,6 +152,8 @@ found:
 
 // ICT1012 Lab 4 ----------------
 
+  // In a new process, create 16 VMA entry slots
+  // Mark their valid as 0 to indicate that no VMAs have been loaded yet
   for (int i = 0; i < MAX_VMA; i++){
     p->vmas[i].valid = 0;
   }

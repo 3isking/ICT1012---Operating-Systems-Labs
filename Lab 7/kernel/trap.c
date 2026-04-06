@@ -138,12 +138,14 @@ usertrap(void)
         // Check protection and flags
         // call mmap_handler, which is implemented above
 
-        // ... code ...
+        // Check if a process is attempting to write into a read-only VMA
         if (r_scause() == 15 && !(v->prot & PROT_WRITE)){
           printf("usertrap(): write to read-only mmap\n");
           setkilled(p);
         } else {
+          // If the permissions are fine, mmap_handler is used to allocate map the page into the frame
           if (mmap_handler(va, v) < 0){
+            // Process is killed if memory mapping fails
             setkilled(p);
           }
         }
@@ -154,9 +156,9 @@ usertrap(void)
           // Handle Heap fault (Lazy SBRK)
           // Now that VMAs are at 0x40000000, unmapped VMA addresses will NOT be < p->sz.
           // FIX for munmap_noaccess: Only allow lazy allocation for the heap
-          if(va < p->sz && va >= p->trapframe->sp) {
+          if(va < p->sz && va >= p->trapframe->sp) {    // This checks if the address of va is inside the heap (above Stack Pointer, below process heap limit)
 
-            // ... code ...
+            // Use heap demand paging through vmfault()
             int read = (r_scause() == 13);
             if(vmfault(p->pagetable, va, read) == 0){
               setkilled(p);

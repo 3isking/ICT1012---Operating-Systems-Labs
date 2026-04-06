@@ -506,9 +506,15 @@ sys_pipe(void)
 
 // ICT1012 Lab 4 ----------------
 // implement sys_mmap
+
+// Implementing sys_mmap will record metadata for VMA
+// This will basically update the VMA slots to state that a VMA is valid
 uint64
 sys_mmap(void)
 {
+
+  // Obtain the arguments needed to map files to memory
+  // Main ones needed are the length, protection flags, file pointer & offset
   uint64 addr;
   int length, prot, flags, fd, offset;
   struct file *f;
@@ -522,27 +528,37 @@ sys_mmap(void)
   }
   argint(5, &offset);
 
+  // Length will use the Page Roundup to add on the internal fragmentation to ensure its an entire page size
   length = PGROUNDUP(length);
-  struct vma *nv = 0;
 
+  // Find a free VMA slot and store the reference to the VMA in nv
+  struct vma *nv = 0;
   for(int i = 0; i < MAX_VMA; i++){
-    if(p->vmas[i].valid == 0){
+    if(p->vmas[i].valid == 0){  // Checks if the VMA slot valid bit is 0 (free)
       nv = &p->vmas[i];
       break;
     }
   }
-
+  // Return an error if there is no VMA slot found
   if(nv == 0){
     return -1;
   }
 
+  // !f->writable checks if the file is a read-only file
+  // If the file is read only but the VMA in mmap tries to map it as a writable shared memory, return an error
   if((flags == MAP_SHARED) && (prot & PROT_WRITE) && !f->writable){
     return -1;
   } 
 
+  // mmap region (virtual memory). This is chosen to be a high memory above the heap but below the trapframe & trampoline
   uint64 base = 0x40000000;
 
+  // The VMA will be allocated in the virtual memory by placing it after the highest VMA memory
+  // Look through all 16 VMAs within a process
   for(int i = 0; i < MAX_VMA; i++){
+
+    // If the VMA found is valid, set the setting VMA's base address as the end of the found existing VMA
+    // By iterating through all VMAs, it ensures the VMA's base address only starts after all existing VMA mappings
     if(p->vmas[i].valid){
       uint64 end = p->vmas[i].addr + p->vmas[i].length;
       if(end > base){
@@ -551,6 +567,7 @@ sys_mmap(void)
     }
   }
 
+  // Fill VMA details
   nv->addr = base;
   nv->valid = 1;
   nv->length = length;
@@ -559,53 +576,69 @@ sys_mmap(void)
   nv->f = f;
   nv->offset = offset;
 
+  // Duplicate the file refernce in the event that the file gets closed elsewhere
   filedup(f);
   return nv->addr;
 }
 
 // implement sys_munmap
+
+// Implementing sys_munmap will remove the mapping for VMAs
+// This will basically update the VMA slots to be invalid as well as its metadata
 uint64
 sys_munmap(void)
 {
   uint64 addr;
   int length;
 
+  // Obtain the target VMA to clean
   argaddr(0, &addr);
   argint(1, &length);
 
+  // Find the target VMA within the process's list of VMAs
   struct proc *p = myproc();
   struct vma *v = 0;
 
-  // code
+  // Iterate through all 16 VMAs
   for(int i = 0; i < MAX_VMA; i++){
+    // Check if the VMA found if valid and the VMA is withn range of the target VMA
     if(p->vmas[i].valid && addr >= p->vmas[i].addr && addr < p->vmas[i].addr + p->vmas[i].length){
+      
+      // Store the found VMA into v
       v = &p->vmas[i]; 
       break;
     }
   }
 
+  // If no matching VMA is found, return an error
   if(v == 0) {
     return -1;
   }
 
+  // Function handles the dirty pages to write to file, remove page table entries and frees memory
   vma_unmap(p, v, addr, length);
 
+  // This handles three cases where VMAs are unmapped entirely or partially (from the start/end)
+  // If the target address matches the start of the VMA and the target length matches the VMA's length, remove the whole VMA
   if (addr == v->addr && length == v->length){
     // Full Unmap
     fileclose(v->f);
     v->valid = 0;
   } else if (addr == v->addr){
+    // If the target address matches the start of the VMA but the length isnt the whole thing, do a partial unmap and shift the VMA forward to the start
     // Partial Unmap from Start
     v->addr += length;
     v->offset += length;
     v->length -= length;
 
   } else {
+    // If the target address isnt the start of a VMA, remove from the back
     // Partial Unmap from End
     v->length -= length;
 
   }
 
+  // Flushed Translation Look-Aside Buffers (TLBs)
   sfence_vma();
 
   return 0;

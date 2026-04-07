@@ -291,8 +291,11 @@ kfork(void)
 
   for(int i = 0; i < MAX_VMA; i++){
     if(p->vmas[i].valid){
+
+      // Copy VMA metadata from parent
       np->vmas[i] = p->vmas[i];
 
+      // Own a duplicate reference to the file
       filedup(p->vmas[i].f);
     }
   }
@@ -413,10 +416,13 @@ kexit(int status)
 // ICT1012 Lab 4 ----------------
   for(int i = 0; i < MAX_VMA; i++){
     if(p->vmas[i].valid){
+      // Unmap all VMAs
       vma_unmap(p, &p->vmas[i], p->vmas[i].addr, p->vmas[i].length);
 
+      // Close VMAs file refernces
       fileclose(p->vmas[i].f);
 
+      // Invalidate VMA Slot
       p->vmas[i].valid = 0;
     }
   }
